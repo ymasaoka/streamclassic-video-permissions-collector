@@ -21,7 +21,7 @@ I don't know how many people will refer to the information on Stream Classic, wh
 
 1. Start your browser and open the DevTools
 1. Go to the Network tab and start recording network logs
-1. Access the [Stream Classic](https://web.microsoftstream.com/)
+1. Access [Stream Classic](https://web.microsoftstream.com/)
 1. Filter the traced network log by `video`, select the XHR record whose name starts with **videos?$top=** from the filter results, and get the request header information: `authority` and `Authorization`
 
 ### Run the script
