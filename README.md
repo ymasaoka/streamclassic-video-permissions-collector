@@ -1,6 +1,6 @@
 # streamclassic-webapi
 
-This repository contains a script that permissions information for videos that uploaded on Stream Classic, which will become EOSL in Feb 2024.  
+This repository contains a script that retrieves permissions information for videos that uploaded on Stream Classic, which will become EOSL in Feb 2024.  
 Although Microsoft says that it is not possible to retrieve read permissions granted to videos in Stream Classic, Stream Classic can still be retrieved and displayed that information.  
 In other words, if Microsoft publish the ways to get the permissions, we should be able to obtain the same information.
 
