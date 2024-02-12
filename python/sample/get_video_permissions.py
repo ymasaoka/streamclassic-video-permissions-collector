@@ -2,13 +2,11 @@ import json
 import os
 import pandas as pd
 import requests
+import traceback
 
-output_dir_roll_assignments = './output/rollAssignments'
-output_dir_stream_group = './output/streamGroups'
-headers = {
-    'Accept': 'application/json, text/plain, */*',
-    'Authorization': os.environ['HEADER_AUTHORIZATION']
-}
+from tqdm import tqdm
+
+import stream_sc
 
 def create_dir(path):
     if os.path.isdir(path):
@@ -16,53 +14,71 @@ def create_dir(path):
     else:
         os.makedirs(path)
 
-def create_default_output_dir():
-    create_dir(output_dir_roll_assignments)
-    create_dir(output_dir_stream_group)
+def export_json(data, path):
+    # Skip if no data exists
+    if not data:
+        return
 
-def get_roll_assignments():
+    with open(path, 'w') as f:
+        json.dump(data, f, indent=2, ensure_ascii=False)
+
+def get_roll_assignments_and_groups():
+    # Import CSV (video GUIDs)
     df = pd.read_csv(f"./input/videos.csv")
-    for row_value in df['guid']:
-        r_rolls = requests.get(
-            url=f"https://{os.environ['HEADER_AUTHORITY']}/api/videos/{row_value}/roleAssignments?$expand=Principal&adminmode=true&api-version=1.4-private",
-            headers=headers
-        )
-        with open(f'./output/rollAssignments/{row_value}.json', 'w') as f:
-            json.dump(r_rolls.json(), f, indent=2)
-        print(f'rollAssignment saved. video:{row_value}')
+    s = stream_sc.Stream()
 
-        for roll in r_rolls.json()['value']:
-            if all([
-                roll['principal']['type'] == 'StreamGroup',
-                roll['principal']['mail'] == None
-            ]):
-                print(f"StreamGroup founded. id={roll['principal']['id']};name={roll['principal']['name']}")
-                create_dir(f"{output_dir_stream_group}/{roll['principal']['id']}")
+    exist_as_file = True
+    for row_value in tqdm(df['guid']):
+        try:
+            export_file_path_rolls = f"{os.environ['OUTPUT_DIR_ROLL_ASSIGNMENTS']}/{row_value}.json"
+            if os.path.isfile(export_file_path_rolls) and exist_as_file:
+                with open(export_file_path_rolls) as f:
+                    r_rolls = json.load(f)
+            else:
+                r_rolls = s.get_roll_assignments(row_value)
+                export_json(r_rolls, export_file_path_rolls)
 
-                r_group_owners = requests.get(
-                    url=f"https://{os.environ['HEADER_AUTHORITY']}/api/groups/{roll['principal']['id']}/owners?$top=100&$expand=Principal&adminmode=true&api-version=1.4-private",
-                    headers=headers
-                )
-                with open(f"./output/streamGroups/{roll['principal']['id']}/owners.json", "w") as f:
-                    json.dump(r_group_owners.json(), f, indent=2)
-                
-                r_group_contributors = requests.get(
-                    url=f"https://{os.environ['HEADER_AUTHORITY']}/api/groups/{roll['principal']['id']}/contributors?$top=100&$expand=Principal&adminmode=true&api-version=1.4-private",
-                    headers=headers
-                )
-                with open(f"./output/streamGroups/{roll['principal']['id']}/contributors.json", "w") as f:
-                    json.dump(r_group_contributors.json(), f, indent=2)
+            if r_rolls is None:
+                continue
 
-                r_group_viewers = requests.get(
-                    url=f"https://{os.environ['HEADER_AUTHORITY']}/api/groups/{roll['principal']['id']}/viewers?$top=100&$expand=Principal&adminmode=true&api-version=1.4-private",
-                    headers=headers
-                )
-                with open(f"./output/streamGroups/{roll['principal']['id']}/viewers.json", "w") as f:
-                    json.dump(r_group_viewers.json(), f, indent=2)
+            for roll in r_rolls['value']:
+                if all([
+                    roll['principal']['type'] == 'StreamGroup',
+                    roll['principal']['mail'] == None
+                ]):
+                    print(f"[Debug] StreamOnlyGroup founded. id={roll['principal']['id']}; name={roll['principal']['name']}")
+                    create_dir(f"{os.environ['OUTPUT_DIR_STREAM_GROUP']}/{roll['principal']['id']}")
+                    group_id = roll['principal']['id']
+                    # Get group owners info
+                    export_file_path_group_owners = f"{os.environ['OUTPUT_DIR_STREAM_GROUP']}/{roll['principal']['id']}/owners.json"
+                    if not os.path.isfile(export_file_path_group_owners) and exist_as_file:
+                        r_group_owners = s.get_group_owners(group_id)
+                        export_json(r_group_owners, export_file_path_group_owners)
+                    # Get group contributors info
+                    export_file_path_group_contributors = f"{os.environ['OUTPUT_DIR_STREAM_GROUP']}/{roll['principal']['id']}/contributors.json"
+                    if not os.path.isfile(export_file_path_group_contributors) and exist_as_file:
+                        r_group_contributors = s.get_group_contributors(group_id)
+                        export_json(r_group_contributors, export_file_path_group_contributors)
+                    # Get group viewers info
+                    export_file_path_group_viewers = f"{os.environ['OUTPUT_DIR_STREAM_GROUP']}/{roll['principal']['id']}/viewers.json"
+                    if not os.path.isfile(export_file_path_group_viewers) and exist_as_file:
+                        r_group_viewers = s.get_group_viewers(group_id)
+                        export_json(r_group_viewers, export_file_path_group_viewers)
+
+
+        except KeyboardInterrupt:
+            Exception('KeyboardInterrupt')
+            return
+        except:
+            traceback.print_exc()
+            print(f'[Error] Processing interrupted. video_id={row_value}')
+
 
 def main():
-    create_default_output_dir()
-    get_roll_assignments()
+    create_dir(os.environ['OUTPUT_DIR_ROLL_ASSIGNMENTS'])
+    create_dir(os.environ['OUTPUT_DIR_STREAM_GROUP'])
+
+    get_roll_assignments_and_groups()
 
 if __name__ == '__main__':
     main()

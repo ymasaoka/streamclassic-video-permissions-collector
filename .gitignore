@@ -161,3 +161,4 @@ cython_debug/
 
 # Repository settings
 /python/sample/output/*
+.DS_Store
