@@ -1,4 +1,4 @@
-# Stream (Classic) Videos permission collector tool
+# Stream (Classic) Video permissions collector tool
 
 This repository contains a script that retrieves permissions information for videos that uploaded on Stream (Classic), which will become EOS in April 15, 2024.  
 [Migration Overview - Stream (Classic) to Stream (on SharePoint)](https://learn.microsoft.com/en-us/stream/streamnew/stream-classic-to-new-migration-overview)  
